@@ -10,7 +10,7 @@ FILENAME="$2"
 
 publish_article() {
     if [ ! -f "$BLOGS_DIR/$FILENAME" ]; then
-        echo "❌ Error: '$FILENAME' not found in $BLOGS_DIR"
+        echo "Error: '$FILENAME' not found in $BLOGS_DIR"
         exit 1
     fi
 
@@ -25,23 +25,32 @@ publish_article() {
     echo ""
     read -p "Enter category order (comma-separated, e.g., 2,1,3): " category_order
 
+    if [[ ! "$category_order" =~ ^[1-7](,[1-7])*$ ]]; then
+        echo "Invalid format. Use comma-separated values between 1-7."
+        exit 1
+    fi
+
     mkdir -p "$PUBLIC_DIR"
     ln -sf "$BLOGS_DIR/$FILENAME" "$PUBLIC_DIR/$FILENAME"
     chmod o+r "$BLOGS_DIR/$FILENAME"
 
-    echo "- file_name: \"$FILENAME\"" >> "$YAML_FILE"
-    echo "  publish_status: true" >> "$YAML_FILE"
-    echo "  cat_order: [$(echo "$category_order" | sed 's/ //g')]" >> "$YAML_FILE"
+    yq -i '.blogs += [{
+    "file_name": "'"$FILENAME"'",
+    "publish_status": true,
+    "cat_order": ['"$category_order"']
+    }]' "$YAML_FILE"
 
-    echo "'$FILENAME' published and added to blogs.yaml"
+    echo "$FILENAME' published and added to blogs.yaml"
+
 }
 
 archive_article() {
     if [ ! -f "$BLOGS_DIR/$FILENAME" ]; then
-        echo "Error: '$FILENAME' not found in $BLOGS_DIR"
+        echo "❌ Error: '$FILENAME' not found in $BLOGS_DIR"
         exit 1
     fi
 
+    # Remove symlink if it exists
     if [ -L "$PUBLIC_DIR/$FILENAME" ]; then
         rm "$PUBLIC_DIR/$FILENAME"
         echo "Removed symlink from public directory."
@@ -49,39 +58,26 @@ archive_article() {
         echo "No symlink found in public directory for '$FILENAME'."
     fi
 
+    # Revoke read permission for others on original blog file
     chmod o-r "$BLOGS_DIR/$FILENAME"
     echo "Revoked read permissions for others."
 
-    TEMP_FILE=$(mktemp)
-    in_entry=false
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "file_name: \"$FILENAME\""; then
-            in_entry=true
-            echo "$line" >> "$TEMP_FILE"
-            continue
-        fi
+    # Use yq to update publish_status to false for this blog entry
+    yq eval ".blogs[] |= (
+      select(.file_name == \"$FILENAME\") 
+      | .publish_status = false
+    )" -i "$YAML_FILE"
+  
 
-        if $in_entry; then
-            if echo "$line" | grep -q "publish_status:"; then
-                echo "  publish_status: false" >> "$TEMP_FILE"
-                continue
-            elif echo "$line" | grep -q "cat_order:"; then
-                echo "$line" >> "$TEMP_FILE"
-                in_entry=false
-                continue
-            fi
-        fi
-
-        echo "$line" >> "$TEMP_FILE"
-    done < "$YAML_FILE"
-
-    mv "$TEMP_FILE" "$YAML_FILE"
     echo "'$FILENAME' archived successfully."
 }
 
 
 
+
+
 delete_article() {
+    # Remove symlink if it exists
     if [ -L "$PUBLIC_DIR/$FILENAME" ]; then
         rm "$PUBLIC_DIR/$FILENAME"
         echo "Removed symlink from public directory."
@@ -89,6 +85,7 @@ delete_article() {
         echo "No symlink found in public for $FILENAME."
     fi
 
+    # Delete blog file if it exists
     if [ -f "$BLOGS_DIR/$FILENAME" ]; then
         rm "$BLOGS_DIR/$FILENAME"
         echo "Deleted blog file from blogs directory."
@@ -96,25 +93,13 @@ delete_article() {
         echo "No file named $FILENAME found in blogs."
     fi
 
-    TEMP_FILE=$(mktemp)
-    in_entry=false
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "file_name: \"$FILENAME\""; then
-            in_entry=true
-            continue
-        fi
-        if $in_entry; then
-            if echo "$line" | grep -q "file_name:"; then
-                in_entry=false
-                echo "$line" >> "$TEMP_FILE"
-            fi
-        else
-            echo "$line" >> "$TEMP_FILE"
-        fi
-    done < "$YAML_FILE"
+    # Remove blog metadata from YAML
+    yq eval -i '
+      .blogs |= map(select(.file_name != "'"$FILENAME"'"))
+    ' "$YAML_FILE"
 
-    mv "$TEMP_FILE" "$YAML_FILE"
     echo "Removed blog metadata from YAML."
+
 }
 
 edit_article() {
@@ -132,35 +117,26 @@ edit_article() {
     echo "6: Lifestyle"
     echo "7: Finance"
     echo -n "Enter comma-separated category numbers: "
-    read new_order
+    
+    read -p "Enter comma-separated category numbers: " new_order
 
     if [[ ! "$new_order" =~ ^[1-7](,[1-7])*$ ]]; then
         echo "Invalid format. Use comma-separated values between 1-7."
         return
     fi
 
-    TEMP_FILE=$(mktemp)
-    in_entry=false
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "file_name: \"$FILENAME\""; then
-            in_entry=true
-            echo "$line" >> "$TEMP_FILE"
-            continue
-        fi
 
-        if $in_entry; then
-            if echo "$line" | grep -q "cat_order:"; then
-                echo "      cat_order: [${new_order//,/\,}]" >> "$TEMP_FILE"
-                continue
-            fi
-            if echo "$line" | grep -q "file_name:"; then
-                in_entry=false
-            fi
-        fi
-        echo "$line" >> "$TEMP_FILE"
-    done < "$YAML_FILE"
+    # Convert to proper YAML array syntax
+    formatted_array=$(echo "$new_order" | awk -F',' '{ for(i=1;i<=NF;i++) printf "%s%s", $i, (i<NF ? ", " : "") }')
 
-    mv "$TEMP_FILE" "$YAML_FILE"
+    # Run yq with correct array formatting
+    yq eval ".blogs[] |= (
+      select(.file_name == \"$FILENAME\") 
+      | .cat_order = [${formatted_array}]
+    )" -i "$YAML_FILE"
+
+
+  
     echo "Updated category order for $FILENAME."
 }
 

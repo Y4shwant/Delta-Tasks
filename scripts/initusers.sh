@@ -106,9 +106,16 @@ for mod in $MODS; do
 
     for author in $authors; do
         sudo setfacl -m u:$mod:x "/home/authors/$author"
-        sudo setfacl -dR -m u:$mod:rw "/home/authors/$author/public"
-        sudo setfacl -dR -m u:$mod:rw "/home/authors/$author/blogs"
-        echo "Granted $mod access to $author's public folder"
+
+        sudo setfacl -m u:$mod:rwx "/home/authors/$author/public"
+        sudo setfacl -m u:$mod:rwx "/home/authors/$author/blogs"
+        sudo setfacl -d -m u:$mod:rwx "/home/authors/$author/blogs"
+        sudo setfacl -d -m m::rwx "/home/authors/$author/blogs"
+        sudo setfacl -d -m u:$mod:rwx "/home/authors/$author/public"
+        sudo setfacl -d -m m::rwx "/home/authors/$author/public"
+
+        echo "Granted $mod access to $author's public and blogs folders"
+
     done
 
     mkdir -p "/home/mods/$mod/authors_public"
@@ -177,3 +184,11 @@ for old_mod in $PREV_MODS; do
 done
 
 echo "Users and permissions updated."
+for mod in $MODS; do
+    authors=$(yq ".mods[] | select(.username == \"$mod\") | .authors[]" "$YAML_FILE")
+    for author in $authors; do
+        sudo setfacl -m m::rwx "/home/authors/$author/public"
+        sudo setfacl -m m::rwx "/home/authors/$author/blogs"
+    done
+done
+
