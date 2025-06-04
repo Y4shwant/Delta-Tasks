@@ -1,6 +1,6 @@
 users:
-  - name: Aarav
-    username: aarav01
+  - name: AaDiLa
+    username: abc01
     pref1: Technology
     pref2: Finance
     pref3: Sports
@@ -295,6 +295,8 @@ users:
   
   - name: Neel
     username: neel50
-    pref1: Food
-    pref2: Travel
-    pref3: Cinema
+    pref1: Travel
+    pref2: Sports
+    pref3: Finance
+    
+   

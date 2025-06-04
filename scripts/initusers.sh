@@ -191,4 +191,9 @@ for mod in $MODS; do
         sudo setfacl -m m::rwx "/home/authors/$author/blogs"
     done
 done
-
+sudo setfacl -R -m g:g_admin:rwx /home/authors/*
+sudo setfacl -d -m g:g_admin:rwx /home/authors/*
+sudo setfacl -R -m g:g_admin:rwx /home/users/*
+sudo setfacl -d -m g:g_admin:rwx /home/users/*
+sudo setfacl -R -m g:g_admin:rwx /home/mods/*
+sudo setfacl -d -m g:g_admin:rwx /home/mods/*
