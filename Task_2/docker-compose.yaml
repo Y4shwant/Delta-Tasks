@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  users:
+    build: .
+    container_name: blog-users
+    volumes:
+      - ./scripts:/usr/local/bin
+      - blogdata:/home
+    depends_on:
+      - db
+    networks:
+      - internal
+
+  db:
+    image: mysql:5.7
+    container_name: blog-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: blogdb
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - internal
+
+  nginx:
+    build: ./nginx
+    container_name: blog-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - blogdata:/home:ro
+    depends_on:
+      - users
+    networks:
+      - internal
+      - external
+
+volumes:
+  blogdata:
+  dbdata:
+
+networks:
+  internal:
+  external:
+    driver: bridge

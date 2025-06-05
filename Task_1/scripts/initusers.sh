@@ -87,6 +87,8 @@ done
 
 for author in $AUTHORS; do
     sudo chmod 700 "/home/authors/$author"
+    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/public
+    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/blogs
 done
 
 # Setting ACLs for mods
@@ -155,7 +157,7 @@ done
 for old_user in $PREV_USERS; do
     if ! echo "$USERS" | grep -qw "$old_user"; then
         perms=$(stat -c '%A' /home/users/$old_user)
-        if [ "$perms" != "d---------" ]; then 
+        if [ "$perms" != "d---rwx---" ]; then 
             sudo chmod -R 000 "/home/users/$old_user"
             echo "$old_user access revoked"
         fi
@@ -165,7 +167,7 @@ done
 for old_author in $PREV_AUTHORS; do
     if ! echo "$AUTHORS" | grep -qw "$old_author"; then
         perms=$(stat -c '%A' /home/authors/$old_author)
-        if [ "$perms" != "d---------" ]; then 
+        if [ "$perms" != "d---rwx---" ]; then 
             sudo setfacl -bR /home/authors/$old_author
             sudo chmod -R 000 "/home/authors/$old_author"
             echo "$old_author access revoked"
@@ -176,7 +178,7 @@ done
 for old_mod in $PREV_MODS; do
     if ! echo "$MODS" | grep -qw "$old_mod"; then
         perms=$(stat -c '%A' /home/mods/$old_mod)
-        if [ "$perms" != "d---------" ]; then 
+        if [ "$perms" != "d---rwx---" ]; then 
             sudo chmod -R 000 "/home/mods/$old_mod"
             echo "$old_mod access revoked"
         fi
@@ -197,3 +199,4 @@ sudo setfacl -R -m g:g_admin:rwx /home/users/*
 sudo setfacl -d -m g:g_admin:rwx /home/users/*
 sudo setfacl -R -m g:g_admin:rwx /home/mods/*
 sudo setfacl -d -m g:g_admin:rwx /home/mods/*
+sudo setfacl -m g:g_user:x /home/authors/*

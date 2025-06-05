@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 users="/usr/local/bin/sysad-1-users.yaml"
 userpref="/usr/local/bin/sysad-1-userpref.yaml"
 
@@ -54,7 +53,7 @@ max_assign=$(( (total_users + total_blogs - 1) / total_blogs ))
 declare -A user_assignments
 
 for user in "${actual_users[@]}"; do
-    echo "$user"
+    echo "Creating fyp of: $user"
     pref1=$(yq ".users[] | select(.username == \"$user\") | .pref1" $userpref)
     pref2=$(yq ".users[] | select(.username == \"$user\") | .pref2" $userpref)
     pref3=$(yq ".users[] | select(.username == \"$user\") | .pref3" $userpref)
@@ -73,13 +72,10 @@ for user in "${actual_users[@]}"; do
         scores["$file"]=$score
 
     done
-    echo "hi"
     sorted_blogs=$(for file in "${!scores[@]}"; do
         echo "$file ${scores[$file]}"
     done | sort -k2 -nr | awk '{print $1}')
     assigned=1
-    echo "hello"
-    ls /home/users/$user
     echo "Recommended blogs:" > /home/users/$user/fyp.yaml
     for file in $sorted_blogs; do
         if (( blog_assign_count["$file"] < max_assign )); then
@@ -91,6 +87,7 @@ for user in "${actual_users[@]}"; do
             break
         fi
     done
+    chmod 644 /home/users/$user/fyp.yaml
 done
 
 
