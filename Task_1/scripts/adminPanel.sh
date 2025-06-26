@@ -1,7 +1,5 @@
 #!/bin/bash
-set -x
 
-# Only allow execution by users in g_admin group
 if ! id -nG "$USER" | grep -qw "g_admin"; then
     echo "Error: Only admin users can run this script."
     exit 1
@@ -17,8 +15,7 @@ archived_logs=()
 archived_count=0
 
 echo "Generating blog activity report..."
-
-# --- Parse the log file ---
+#parse logs
 while IFS= read -r line; do
     author=$(awk '{print $1}' <<< "$line")
     action=$(awk '{print $2}' <<< "$line")
@@ -42,8 +39,7 @@ while IFS= read -r line; do
         archived_logs+=("[$timestamp] $author archived $blog")
     fi
 done < "$LOG_FILE"
-
-# --- Collect read counts from blogs.yaml ---
+#collect read count
 for author_dir in /home/authors/*; do
     # Skip if inaccessible (e.g., removed authors)
     if [[ ! -r "$author_dir/blogs.yaml" ]]; then
@@ -62,7 +58,6 @@ for author_dir in /home/authors/*; do
     fi
 done
 
-# --- Build Report Content ---
 report_content="=== Blog Activity Report: $(date '+%F %T') ===\n"
 
 # Published
@@ -92,7 +87,7 @@ done
 
 report_content+="\n-- Top 3 Most Read Articles --\n"
 
-# Create a temporary sorted list of 'read_count<TAB>blog_key'
+#sorted list
 top_entries=$(for k in "${!blog_reads[@]}"; do
     echo -e "${blog_reads[$k]}\t$k"
 done | sort -nr | head -n 3)
@@ -106,13 +101,12 @@ else
 fi
 
 
-# --- Write to /home/admin/reports/ ---
+
 mkdir -p /home/admin/reports
 report_file="/home/admin/reports/blog_report_$(date '+%F_%H-%M-%S').txt"
 echo -e "$report_content" > "$report_file"
 chmod 640 "$report_file"
 chown "$USER":g_admin "$report_file"
 
-# --- Clear log ---
 : > "$LOG_FILE"
 echo "Report generated at $report_file"
