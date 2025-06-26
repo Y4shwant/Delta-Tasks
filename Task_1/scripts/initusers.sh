@@ -87,8 +87,9 @@ done
 
 for author in $AUTHORS; do
     sudo chmod 700 "/home/authors/$author"
-    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/public
-    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/blogs
+    sudo setfacl -b "/home/authors/$author/blogs"
+    sudo setfacl -m u::rwx "/home/authors/$author/blogs"
+
 done
 
 # Setting ACLs for mods
@@ -200,3 +201,8 @@ sudo setfacl -d -m g:g_admin:rwx /home/users/*
 sudo setfacl -R -m g:g_admin:rwx /home/mods/*
 sudo setfacl -d -m g:g_admin:rwx /home/mods/*
 sudo setfacl -m g:g_user:x /home/authors/*
+touch "/var/log/blog_activity.log"
+echo "log file created"
+sudo chown root:g_admin "/var/log/blog_activity.log"
+sudo setfacl -m g:g_author:-w- "/var/log/blog_activity.log"
+sudo setfacl -m group::rwx /var/log/blog_activity.log

@@ -1,4 +1,5 @@
 #!/bin/bash
+
 users="/usr/local/bin/sysad-1-users.yaml"
 userpref="/usr/local/bin/sysad-1-userpref.yaml"
 
@@ -10,6 +11,7 @@ if [[ "${actual_users[*]}" != "${pref_users[*]}" ]]; then
     echo "Mismatch between user list and user preferences. Aborting."
     exit 1
 fi
+
 declare -A cat_map=(
   [1]="Sports"
   [2]="Cinema"
@@ -20,14 +22,13 @@ declare -A cat_map=(
   [7]="Finance"
 )
 
-
 declare -A blog_categories
-declare -A blog_scores
 declare -A blog_assign_count
+declare -A blog_authors
 
+# Extract blog metadata from each author's blogs.yaml
 for author in "${authors[@]}"; do
     blog_file="/home/authors/$author/blogs.yaml"
-
     if [[ -f "$blog_file" ]]; then
         while IFS= read -r file; do
             cat_nums=($(yq e ".blogs[] | select(.file_name == \"$file\") | .cat_order[]" "$blog_file"))
@@ -36,11 +37,11 @@ for author in "${authors[@]}"; do
                 cat_name=$(yq e ".categories.$num" "$blog_file")
                 categories+="$cat_name "
             done
-
             categories=$(echo "$categories" | xargs)
             if [[ -n "$file" && -n "$categories" ]]; then
                 blog_categories["$file"]="$categories"
                 blog_assign_count["$file"]=0
+                blog_authors["$file"]="$author"
             fi
         done < <(yq '.blogs[] | select(.publish_status == true) | .file_name' "$blog_file")
     fi
@@ -48,50 +49,45 @@ done
 
 total_blogs=${#blog_categories[@]}
 total_users=${#actual_users[@]}
-max_assign=$(( (total_users + total_blogs - 1) / total_blogs ))  
+max_assign=$(( (total_users + total_blogs - 1) / total_blogs ))  # Evenly distribute
 
-declare -A user_assignments
-
+# Assign blogs to each user
 for user in "${actual_users[@]}"; do
     echo "Creating fyp of: $user"
-    pref1=$(yq ".users[] | select(.username == \"$user\") | .pref1" $userpref)
-    pref2=$(yq ".users[] | select(.username == \"$user\") | .pref2" $userpref)
-    pref3=$(yq ".users[] | select(.username == \"$user\") | .pref3" $userpref)
+
+    pref1=$(yq ".users[] | select(.username == \"$user\") | .pref1" "$userpref")
+    pref2=$(yq ".users[] | select(.username == \"$user\") | .pref2" "$userpref")
+    pref3=$(yq ".users[] | select(.username == \"$user\") | .pref3" "$userpref")
 
     declare -A scores=()
     for file in "${!blog_categories[@]}"; do
         IFS=' ' read -r -a cats <<< "${blog_categories[$file]}"
         score=0
-        
         for i in "${!cats[@]}"; do
             [[ "${cats[$i]}" == "$pref1" ]] && (( score += (10 - i*3) ))
             [[ "${cats[$i]}" == "$pref2" ]] && (( score += (7 - i*2) ))
             [[ "${cats[$i]}" == "$pref3" ]] && (( score += 3 ))
         done
-
         scores["$file"]=$score
-
     done
+
+    # Sort blogs by score descending
     sorted_blogs=$(for file in "${!scores[@]}"; do
         echo "$file ${scores[$file]}"
     done | sort -k2 -nr | awk '{print $1}')
-    assigned=1
-    echo "Recommended blogs:" > /home/users/$user/fyp.yaml
+
+    # Write YAML
+    out_path="/home/users/$user/fyp.yaml"
+    echo "Recommended blogs:" > "$out_path"
+
+    assigned=0
     for file in $sorted_blogs; do
         if (( blog_assign_count["$file"] < max_assign )); then
-            echo "  - blog$assigned: $file" >> /home/users/$user/fyp.yaml
+            echo "  - blog: $file by ${blog_authors[$file]}" >> "$out_path"
             (( blog_assign_count["$file"]++ ))
-            ((assigned++))
+            (( assigned++ ))
         fi
-        if ((assigned>=4)); then
-            break
-        fi
+        (( assigned == 3 )) && break
     done
-    chmod 644 /home/users/$user/fyp.yaml
+    chmod 644 "$out_path"
 done
-
-
-
-
-
-

@@ -33,14 +33,14 @@ publish_article() {
     mkdir -p "$PUBLIC_DIR"
     ln -sf "$BLOGS_DIR/$FILENAME" "$PUBLIC_DIR/$FILENAME"
     chmod o+r "$BLOGS_DIR/$FILENAME"
-
+    
     yq -i '.blogs += [{
-    "file_name": "'"$FILENAME"'",
-    "publish_status": true,
-    "cat_order": ['"$category_order"']
+      "file_name": "'"$FILENAME"'",
+      "publish_status": true,
+      "cat_order": ['"$category_order"']
     }]' "$YAML_FILE"
-
-    echo "$FILENAME' published and added to blogs.yaml"
+    echo "'$FILENAME' published and reflected in blogs.yaml"
+    echo "$USERNAME published $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 
 }
 
@@ -70,6 +70,7 @@ archive_article() {
   
 
     echo "'$FILENAME' archived successfully."
+    echo "$USERNAME archived $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 }
 
 
@@ -99,7 +100,7 @@ delete_article() {
     ' "$YAML_FILE"
 
     echo "Removed blog metadata from YAML."
-
+    echo "$USERNAME deleted $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 }
 
 edit_article() {
