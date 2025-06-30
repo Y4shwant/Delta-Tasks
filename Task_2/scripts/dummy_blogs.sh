@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 AUTHORS_DIR="/home/authors"
 NUM_BLOGS=4
 CATEGORIES=(1 2 3 4 5 6 7)

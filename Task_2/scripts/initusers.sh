@@ -1,56 +1,51 @@
 #!/bin/bash
 set -e
 
-YAML_FILE="$(dirname "$0")/../sysad-1-users.yaml"
+YAML_FILE="/configs/sysad-1-users.yaml"
 
+# Capture previous user sets
 PREV_USERS=$(getent passwd | awk -F: '/\/home\/users\// {print $1}')
 PREV_AUTHORS=$(getent passwd | awk -F: '/\/home\/authors\// {print $1}')
 PREV_MODS=$(getent passwd | awk -F: '/\/home\/mods\// {print $1}')
 
 echo "Creating groups..."
 for group in g_user g_author g_mod g_admin; do
-    if ! getent group "$group" >/dev/null; then
-        sudo groupadd "$group"
+    if ! getent group "$group" > /dev/null; then
+        groupadd "$group"
         echo " Group created: $group"
     fi
 done
 
 create_user() {
-    local username=$1
-    local group=$2
-    local homedir=$3
+    local username="$1"
+    local group="$2"
+    local homedir="$3"
 
     if id "$username" &>/dev/null; then
         echo "User $username already exists, skipping creation."
-      
     else
-        sudo useradd -m -d "$homedir/$username" -g "$group" "$username"
+        useradd -m -d "$homedir/$username" -g "$group" "$username"
         echo "Created user $username in group $group with home $homedir/$username"
-        sudo mkdir -p $homedir/$username
-        sudo chown -R $username:$group $homedir/$username
+        mkdir -p "$homedir/$username"
+        chown -R "$username:$group" "$homedir/$username"
     fi
 }
-#creating users
-ADMINS=$(yq '.admins[].username' "$YAML_FILE")
+
 echo "Creating Admins..."
+ADMINS=$(yq '.admins[].username' "$YAML_FILE")
 for username in $ADMINS; do
     create_user "$username" g_admin "/home/admins"
-   
 done
 
-AUTHORS=$(yq '.authors[].username' "$YAML_FILE")
 echo "Creating Authors..."
+AUTHORS=$(yq '.authors[].username' "$YAML_FILE")
 for username in $AUTHORS; do
     create_user "$username" g_author "/home/authors"
-    sudo mkdir -p "/home/authors/$username/blogs"
-    sudo mkdir -p "/home/authors/$username/public"
-    echo "Set up blogs/ and public/ for $username"
-   
+    mkdir -p "/home/authors/$username/blogs" "/home/authors/$username/public"
 
-    # Initialize blogs.yaml if not exists
     yaml_file="/home/authors/$username/blogs.yaml"
     if [ ! -f "$yaml_file" ]; then
-        cat <<EOF | sudo tee "$yaml_file" > /dev/null
+        cat <<EOF > "$yaml_file"
 categories:
   1: "Sports"
   2: "Cinema"
@@ -62,62 +57,55 @@ categories:
 
 blogs: []
 EOF
-        sudo chown "$username:g_author" "$yaml_file"
-        sudo chmod 644 "$yaml_file"
+        chown "$username:g_author" "$yaml_file"
+        chmod 644 "$yaml_file"
         echo "Initialized blogs.yaml for $username"
     fi
 done
 
-MODS=$(yq '.mods[].username' "$YAML_FILE")
 echo "Creating Moderators..."
+MODS=$(yq '.mods[].username' "$YAML_FILE")
 for username in $MODS; do
     create_user "$username" g_mod "/home/mods"
-   
 done
 
-USERS=$(yq '.users[].username' "$YAML_FILE")
 echo "Creating Users..."
+USERS=$(yq '.users[].username' "$YAML_FILE")
 for username in $USERS; do
     create_user "$username" g_user "/home/users"
 done
-#permissions
-for user in $USERS; do
-    sudo chmod 700 "/home/users/$user"
-done
 
+# User and author perms
+for user in $USERS; do chmod 700 "/home/users/$user"; done
 for author in $AUTHORS; do
-    sudo chmod 700 "/home/authors/$author"
-    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/public
-    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/blogs
+    chmod 700 "/home/authors/$author"
+    setfacl -b "/home/authors/$author/blogs"
+    chmod 711 "/home/authors/$author/blogs"
+    
 done
 
-# Setting ACLs for mods
+echo "Assigning moderator ACLs and links..."
 for mod in $MODS; do
     authors=$(yq ".mods[] | select(.username == \"$mod\") | .authors[]" "$YAML_FILE")
 
-    sudo touch /home/mods/$mod/blacklist.txt
-    sudo chown $mod:g_admin /home/mods/$mod/blacklist.txt
-    sudo chmod 770 /home/mods/$mod/blacklist.txt
-    echo "# please write one word per line" >> /home/mods/$mod/blacklist.txt
+    # blacklist.txt
+    touch "/home/mods/$mod/blacklist.txt"
+    chown "$mod:g_admin" "/home/mods/$mod/blacklist.txt"
+    chmod 770 "/home/mods/$mod/blacklist.txt"
+    echo "# please write one word per line" > "/home/mods/$mod/blacklist.txt"
 
-    
-    # Remove old ACLs
     for dir in /home/authors/*/public; do
-        sudo setfacl -x u:$mod "$dir" 2>/dev/null || true
+        setfacl -x u:$mod "$dir" 2>/dev/null || true
     done
 
     for author in $authors; do
-        sudo setfacl -m u:$mod:x "/home/authors/$author"
-
-        sudo setfacl -m u:$mod:rwx "/home/authors/$author/public"
-        sudo setfacl -m u:$mod:rwx "/home/authors/$author/blogs"
-        sudo setfacl -d -m u:$mod:rwx "/home/authors/$author/blogs"
-        sudo setfacl -d -m m::rwx "/home/authors/$author/blogs"
-        sudo setfacl -d -m u:$mod:rwx "/home/authors/$author/public"
-        sudo setfacl -d -m m::rwx "/home/authors/$author/public"
-
-        echo "Granted $mod access to $author's public and blogs folders"
-
+        setfacl -m u:$mod:x "/home/authors/$author"
+        setfacl -m u:$mod:rwx "/home/authors/$author/public"
+        setfacl -m u:$mod:rwx "/home/authors/$author/blogs"
+        setfacl -d -m u:$mod:rwx "/home/authors/$author/public"
+        setfacl -d -m u:$mod:rwx "/home/authors/$author/blogs"
+        setfacl -d -m m::rwx "/home/authors/$author/public"
+        setfacl -d -m m::rwx "/home/authors/$author/blogs"
     done
 
     mkdir -p "/home/mods/$mod/authors_public"
@@ -126,16 +114,13 @@ for mod in $MODS; do
         target="/home/authors/$author/public"
         if [ ! -L "$link" ]; then
             ln -s "$target" "$link"
-            echo "Created symlink for $mod -> $author"
-        else
-            echo "Symlink already exists for $mod -> $author"
         fi
     done
 
-    sudo chmod 700 "/home/mods/$mod"
+    chmod 700 "/home/mods/$mod"
 done
 
-# Set up all_blogs for users
+echo "Creating user view access..."
 for user in $USERS; do
     mkdir -p "/home/users/$user/all_blogs"
     for author in $AUTHORS; do
@@ -143,60 +128,42 @@ for user in $USERS; do
         target="/home/authors/$author/public"
         if [ ! -L "$link" ]; then
             ln -s "$target" "$link"
-            echo "Linked $user to $author's public blog"
-        else
-            echo "Symlink already exists for $user -> $author"
+            chmod 755 "$target"
         fi
-        sudo chmod 755 "$target"
     done
-    sudo chmod 555 "/home/users/$user/all_blogs"
+    chmod 555 "/home/users/$user/all_blogs"
 done
 
-#Revoke access
-
+echo "Revoking access from removed users..."
 for old_user in $PREV_USERS; do
     if ! echo "$USERS" | grep -qw "$old_user"; then
-        perms=$(stat -c '%A' /home/users/$old_user)
-        if [ "$perms" != "d---rwx---" ]; then 
-            sudo chmod -R 000 "/home/users/$old_user"
-            echo "$old_user access revoked"
-        fi
+        chmod -R 000 "/home/users/$old_user"
     fi
 done
 
 for old_author in $PREV_AUTHORS; do
     if ! echo "$AUTHORS" | grep -qw "$old_author"; then
-        perms=$(stat -c '%A' /home/authors/$old_author)
-        if [ "$perms" != "d---rwx---" ]; then 
-            sudo setfacl -bR /home/authors/$old_author
-            sudo chmod -R 000 "/home/authors/$old_author"
-            echo "$old_author access revoked"
-        fi
+        setfacl -bR "/home/authors/$old_author"
+        chmod -R 000 "/home/authors/$old_author"
     fi
 done
 
 for old_mod in $PREV_MODS; do
     if ! echo "$MODS" | grep -qw "$old_mod"; then
-        perms=$(stat -c '%A' /home/mods/$old_mod)
-        if [ "$perms" != "d---rwx---" ]; then 
-            sudo chmod -R 000 "/home/mods/$old_mod"
-            echo "$old_mod access revoked"
-        fi
+        chmod -R 000 "/home/mods/$old_mod"
     fi
 done
 
-echo "Users and permissions updated."
-for mod in $MODS; do
-    authors=$(yq ".mods[] | select(.username == \"$mod\") | .authors[]" "$YAML_FILE")
-    for author in $authors; do
-        sudo setfacl -m m::rwx "/home/authors/$author/public"
-        sudo setfacl -m m::rwx "/home/authors/$author/blogs"
-    done
+echo "Granting admin group ACLs..."
+for dir in /home/authors/* /home/users/* /home/mods/*; do
+    setfacl -R -m g:g_admin:rwx "$dir"
+    setfacl -d -m g:g_admin:rwx "$dir"
 done
-sudo setfacl -R -m g:g_admin:rwx /home/authors/*
-sudo setfacl -d -m g:g_admin:rwx /home/authors/*
-sudo setfacl -R -m g:g_admin:rwx /home/users/*
-sudo setfacl -d -m g:g_admin:rwx /home/users/*
-sudo setfacl -R -m g:g_admin:rwx /home/mods/*
-sudo setfacl -d -m g:g_admin:rwx /home/mods/*
-sudo setfacl -m g:g_user:x /home/authors/*
+
+touch "/var/log/blog_activity.log"
+chown root:g_admin "/var/log/blog_activity.log"
+setfacl -m g:g_author:-w- "/var/log/blog_activity.log"
+setfacl -m group::rwx "/var/log/blog_activity.log"
+
+echo "✅ Users and permissions updated."
+

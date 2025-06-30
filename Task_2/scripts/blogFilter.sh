@@ -19,7 +19,7 @@ for AUTHOR_SYMLINK in "$MOD_HOME/authors_public"/*; do
     BLOG_DIR="$AUTHOR_BLOG_DIR"
     shopt -s nullglob
     flag=true
-    for BLOG_FILE in "$BLOG_DIR"/*.txt; do
+    for BLOG_FILE in "$BLOG_DIR"/*; do
         echo "Found blog file: $(basename "$BLOG_FILE")"
         flag=false
         # Resolve blog file symlink to actual target file
