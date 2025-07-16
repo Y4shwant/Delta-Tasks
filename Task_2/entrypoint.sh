@@ -29,6 +29,8 @@ else
 %g_mod ALL=(ALL) NOPASSWD: /usr/local/bin/fix_blog_owner.sh
 %g_user ALL=(ALL) NOPASSWD: /usr/local/bin/read_blog.sh
 %g_admin ALL=(ALL) NOPASSWD: /usr/local/bin/*
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/read_blog.sh
+
 EOF
         chmod 440 /etc/sudoers.d/blogserver
     else
@@ -43,5 +45,4 @@ ls -A /etc
 # Debug: Show sudoers.d content
 echo "[*] /etc/sudoers.d/blogserver contents:"
 cat /etc/sudoers.d/blogserver 2>/dev/null || echo "[!] No blogserver sudoers file found"
-
-exec tail -f /dev/null
+exec python3 /usr/local/bin/read_blog_api.py

@@ -14,6 +14,13 @@ RUN groupadd -g 5000 -r g_admin && \
     groupadd -g 5002 -r g_author && \
     groupadd -g 5003 -r g_user
 
+# Install Flask
+RUN apt-get update && apt-get install -y python3-pip && \
+    pip3 install flask
+
+# Copy API script
+COPY /server/read_blog_api.py /usr/local/bin/read_blog_api.py
+
 # Install yq (Mike Farah official binary)
 RUN wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && \
     chmod +x /usr/local/bin/yq
@@ -58,4 +65,4 @@ WORKDIR /home
 # Set entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-CMD ["/bin/bash"]
+CMD ["python3", "/usr/local/bin/read_blog_api.py"]

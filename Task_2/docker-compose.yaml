@@ -1,14 +1,27 @@
+version: "3.8"
+
 services:
   blogserver:
-    build: .
+    build:
+      context: .
     container_name: blogserver
     privileged: true
+    ports:
+      - "5000:5000" # Flask API
+    restart: unless-stopped
     volumes:
       - home_data:/home
       - etc_data:/etc
+
+  nginx:
+    build:
+      context: ./nginx/
+    container_name: nginx
     ports:
-      - "8080:8080"
+      - "80:80"
     restart: unless-stopped
+    depends_on:
+      - blogserver
 
 volumes:
   home_data:

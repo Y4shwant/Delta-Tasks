@@ -274,3 +274,8 @@ sudo chown root:g_author /home/authors
 sudo chmod 755 /home/authors
 sudo chown root:g_mod /home/mods
 sudo chmod 755 /home/mods
+
+
+for author in $(ls /home/authors); do
+    echo "127.0.0.1 $author.blog.in" | sudo tee -a /etc/hosts
+done
