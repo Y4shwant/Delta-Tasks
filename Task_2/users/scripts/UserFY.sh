@@ -1,7 +1,7 @@
 #!/bin/bash
 
-users="/usr/local/bin/sysad-1-users.yaml"
-userpref="/usr/local/bin/sysad-1-userpref.yaml"
+users="/configs/sysad-1-users.yaml"
+userpref="/configs/sysad-1-userpref.yaml"
 
 mapfile -t actual_users < <(yq '.users[].username' "$users" | sort)
 mapfile -t pref_users < <(yq '.users[].username' "$userpref" | sort)
@@ -12,21 +12,11 @@ if [[ "${actual_users[*]}" != "${pref_users[*]}" ]]; then
     exit 1
 fi
 
-declare -A cat_map=(
-  [1]="Sports"
-  [2]="Cinema"
-  [3]="Technology"
-  [4]="Travel"
-  [5]="Food"
-  [6]="Lifestyle"
-  [7]="Finance"
-)
-
 declare -A blog_categories
 declare -A blog_assign_count
 declare -A blog_authors
 
-# Extract blog metadata from each author's blogs.yaml
+# Extract blogs and metadata
 for author in "${authors[@]}"; do
     blog_file="/home/authors/$author/blogs.yaml"
     if [[ -f "$blog_file" ]]; then
@@ -49,17 +39,17 @@ done
 
 total_blogs=${#blog_categories[@]}
 total_users=${#actual_users[@]}
-max_assign=$(( (total_users + total_blogs - 1) / total_blogs ))  # Evenly distribute
+max_assign=$(( (total_users * 3 + total_blogs - 1) / total_blogs ))
 
-# Assign blogs to each user
+
+# Precompute sorted blog lists per user
+declare -A user_sorted_blogs
 for user in "${actual_users[@]}"; do
-    echo "Creating fyp of: $user"
-
+    declare -A scores=()
     pref1=$(yq ".users[] | select(.username == \"$user\") | .pref1" "$userpref")
     pref2=$(yq ".users[] | select(.username == \"$user\") | .pref2" "$userpref")
     pref3=$(yq ".users[] | select(.username == \"$user\") | .pref3" "$userpref")
 
-    declare -A scores=()
     for file in "${!blog_categories[@]}"; do
         IFS=' ' read -r -a cats <<< "${blog_categories[$file]}"
         score=0
@@ -71,23 +61,35 @@ for user in "${actual_users[@]}"; do
         scores["$file"]=$score
     done
 
-    # Sort blogs by score descending
-    sorted_blogs=$(for file in "${!scores[@]}"; do
+    user_sorted_blogs["$user"]=$(for file in "${!scores[@]}"; do
         echo "$file ${scores[$file]}"
     done | sort -k2 -nr | awk '{print $1}')
+done
 
-    # Write YAML
-    out_path="/home/users/$user/fyp.yaml"
-    echo "Recommended blogs:" > "$out_path"
 
-    assigned=0
-    for file in $sorted_blogs; do
-        if (( blog_assign_count["$file"] < max_assign )); then
-            echo "  - blog: $file by ${blog_authors[$file]}" >> "$out_path"
-            (( blog_assign_count["$file"]++ ))
-            (( assigned++ ))
-        fi
-        (( assigned == 3 )) && break
+# Assign blogs: 3 rounds
+for round in {1..3}; do
+    echo "[*] Round $round assigning blogs..."
+    for user in "${actual_users[@]}"; do
+        out_path="/home/users/$user/fyp.yaml"
+        [[ $round -eq 1 ]] && echo "Recommended blogs:" > "$out_path"
+
+        sorted_blogs="${user_sorted_blogs["$user"]}"
+
+        for file in $sorted_blogs; do
+            if (( blog_assign_count["$file"] < max_assign )); then
+                echo "  - blog: $file by ${blog_authors[$file]}" >> "$out_path"
+                (( blog_assign_count["$file"]++ ))
+
+                # Remove assigned blog from user’s sorted list
+                user_sorted_blogs["$user"]=$(echo "$sorted_blogs" | grep -v "^$file$")
+                break
+            fi
+        done
     done
-    chmod 644 "$out_path"
+done
+
+# Set permissions
+for user in "${actual_users[@]}"; do
+    chmod 644 "/home/users/$user/fyp.yaml"
 done

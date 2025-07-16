@@ -2,7 +2,7 @@
 
 set -e
 
-YAML_FILE="$(dirname "$0")/../sysad-1-users.yaml"
+YAML_FILE="/configs/sysad-1-users.yaml"
 
 PREV_USERS=$(getent passwd | awk -F: '/\/home\/users\// {print $1}')
 PREV_AUTHORS=$(getent passwd | awk -F: '/\/home\/authors\// {print $1}')

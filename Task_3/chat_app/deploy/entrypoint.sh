@@ -1,11 +1,26 @@
-#!/bin/sh
+#!/bin/bash
 
-# Secure user DB
-chmod 600 /app/db/users.db
-chmod 700 /app/db
+APP_DIR="/app"
+DB_DIR="$APP_DIR/db"
+ROOMS_FILE="$DB_DIR/rooms.yaml"
+LOG_DIR="$DB_DIR/chat_logs"
+SERVER_SCRIPT="$APP_DIR/server/server.py"
 
-# Optional: limit other scripts
-chmod 700 /app/server/auth.py
-chmod 755 /app/server/server.py
+echo "[*] Preparing Chat App Server..."
 
-exec python3 /app/server/server.py
+# Ensure DB directory exists
+mkdir -p "$DB_DIR"
+
+# Ensure rooms.yaml exists
+if [ ! -f "$ROOMS_FILE" ]; then
+    echo "[!] rooms.yaml not found. Creating..."
+    echo "{}" > "$ROOMS_FILE"
+else
+    echo "[+] Found existing rooms.yaml"
+fi
+
+# Ensure chat_logs directory exists
+mkdir -p "$LOG_DIR"
+
+echo "[*] Starting Chat App Server..."
+exec python3 "$SERVER_SCRIPT"

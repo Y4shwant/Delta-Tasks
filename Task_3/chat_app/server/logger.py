@@ -1,21 +1,13 @@
 import os
-import json
-from datetime import datetime
 
 class ChatLogger:
     def __init__(self):
-        self.log_dir = os.path.join("..", "db", "chat_logs")
-        os.makedirs(self.log_dir, exist_ok=True)
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        self.log_dir = os.path.join(base_dir, "db", "chat_logs")
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
     def log(self, room_name, username, message):
-        entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "user": username,
-            "message": message
-        }
-        file_path = os.path.join(self.log_dir, f"{room_name}.log")
-        try:
-            with open(file_path, "a") as f:
-                f.write(json.dumps(entry) + "\n")
-        except Exception as e:
-            print(f"[!] Failed to log message: {e}")
+        filepath = os.path.join(self.log_dir, f"{room_name}.log")
+        with open(filepath, "a") as f:
+            f.write(f"{username}: {message}\n")

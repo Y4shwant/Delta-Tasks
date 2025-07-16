@@ -1,11 +1,15 @@
-
 services:
-  blog-app:
+  blogserver:
     build: .
-    container_name: blog-app
+    container_name: blogserver
+    privileged: true
     volumes:
-      - ./data/home:/home
-      - ./data/var_log:/var/log
-      - ./configs:/configs:ro
-    tty: true
+      - home_data:/home
+      - etc_data:/etc
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 
+volumes:
+  home_data:
+  etc_data:

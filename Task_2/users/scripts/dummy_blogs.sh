@@ -29,6 +29,7 @@ for author_path in "$AUTHORS_DIR"/*; do
         # Create blog file
         touch "$blog_path"
         chown $author:g_author "$blog_path"
+        chmod o-r "$blog_path"
         # Create symlink
         ln -sf "$blog_path" "$public_dir/$blog_name"
 

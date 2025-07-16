@@ -18,6 +18,11 @@ def handle_client(conn, addr):
     
     try:
         creds = conn.recv(1024).decode().strip()
+        if not creds:
+            print(f"[-] {addr} disconnected during auth.")
+            conn.close()
+            return
+
         parts = creds.split(":")
         if len(parts) != 3:
             conn.send(b"AUTH_FAIL")
@@ -34,7 +39,7 @@ def handle_client(conn, addr):
 
         if not success:
             conn.send(b"AUTH_FAIL")
-            conn.close()
+            
             return
 
         conn.send(b"AUTH_SUCCESS")

@@ -1,6 +1,7 @@
 import socket
 import threading
 import hashlib
+import sys
 
 HOST = '127.0.0.1'
 PORT = 9000
@@ -13,18 +14,38 @@ def authenticate(sock):
         print("1. Login\n2. Register")
         choice = input("Choose option (1 or 2): ").strip()
 
+        if choice not in ("1", "2"):
+            print("[!] Invalid choice. Please enter 1 or 2.")
+            continue
+
         username = input("Username: ").strip()
         password = input("Password: ").strip()
         hashed = hash_password(password)
 
-        sock.send(f"{choice}:{username}:{hashed}".encode())
-        response = sock.recv(1024).decode()
+        try:
+            sock.send(f"{choice}:{username}:{hashed}".encode())
+            response = sock.recv(1024).decode()
+            if not response:
+                print("[!] Server closed connection during authentication.")
+                sock.close()
+                sys.exit(1)
+
+        except:
+            print("[!] Lost connection during authentication.")
+            sock.close()
+            sys.exit(1)
 
         if response == "AUTH_SUCCESS":
             print(f"[+] Logged in as {username}")
             return username
+        elif response == "AUTH_FAIL":
+            print("[!] Authentication failed. Try again.")
+        elif response == "USER_EXISTS":
+            print("[!] Username already exists. Try logging in.")
+        elif response == "INVALID_OPTION":
+            print("[!] Invalid option sent to server.")
         else:
-            print(f"[!] {response}")
+            print(f"[!] Unknown server response: {response}")
 
 def listen(sock):
     while True:
@@ -32,9 +53,13 @@ def listen(sock):
             msg = sock.recv(1024).decode()
             if msg:
                 print("\n" + msg)
+            else:
+                print("[!] Server closed the connection.")
+                break
         except:
-            print("[!] Connection closed by server")
+            print("[!] Lost connection to server.")
             break
+    sys.exit(0)
 
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -56,14 +81,15 @@ def main():
     print("/exit")
 
     while True:
-        msg = input()
-        if msg.strip() == "/exit":
-            sock.close()
-            break
         try:
+            msg = input()
+            if msg.strip() == "/exit":
+                sock.send(b"/exit")
+                sock.close()
+                break
             sock.send(msg.encode())
         except:
-            print("[!] Failed to send message.")
+            print("[!] Connection lost. Exiting.")
             break
 
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 YAML_FILE="$(dirname "$0")/../sysad-1-users.yaml"
@@ -20,32 +19,22 @@ create_user() {
     local username=$1
     local group=$2
     local homedir=$3
-    local user_home="$homedir/$username"
 
     if id "$username" &>/dev/null; then
-        echo "User $username already exists."
-
-        # Check if home directory exists
-        if [ ! -d "$user_home" ]; then
-            echo "Home directory $user_home missing. Creating it..."
-            sudo mkdir -p "$user_home"
-            sudo chown -R "$username:$group" "$user_home"
-            sudo chmod 710 "$user_home"
-            echo "Home directory created for $username at $user_home"
-        fi
+        echo "User $username already exists, skipping creation."
+      
     else
-        echo "Creating user $username in group $group with home $user_home"
-        sudo useradd -m -d "$user_home" -g "$group" "$username"
-        sudo chown -R "$username:$group" "$user_home"
-        sudo chmod 710 "$user_home"
+        sudo useradd -m -d "$homedir/$username" -g "$group" "$username"
+        echo "Created user $username in group $group with home $homedir/$username"
+        sudo mkdir -p $homedir/$username
+        sudo chown -R $username:$group $homedir/$username
     fi
 }
-
 #creating users
 ADMINS=$(yq '.admins[].username' "$YAML_FILE")
 echo "Creating Admins..."
 for username in $ADMINS; do
-    create_user "$username" g_admin "/home/admin"
+    create_user "$username" g_admin "/home/admins"
    
 done
 
@@ -93,14 +82,13 @@ for username in $USERS; do
 done
 #permissions
 for user in $USERS; do
-    sudo chmod 710 "/home/users/$user"
+    sudo chmod 700 "/home/users/$user"
 done
 
 for author in $AUTHORS; do
-    sudo chmod 710 "/home/authors/$author"
-    sudo setfacl -b "/home/authors/$author/blogs"
-    sudo setfacl -m u::rwx "/home/authors/$author/blogs"
-
+#    sudo chmod 700 "/home/authors/$author"
+    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/public
+    sudo setfacl -dR -m g:g_user:rx /home/authors/$author/blogs
 done
 
 # Setting ACLs for mods
@@ -198,9 +186,12 @@ for old_mod in $PREV_MODS; do
 done
 
 echo "Users and permissions updated."
-for author in $AUTHORS; do
-    sudo setfacl -m m::rwx "/home/authors/$author/public"
-    sudo setfacl -m m::rwx "/home/authors/$author/blogs"
+for mod in $MODS; do
+    authors=$(yq ".mods[] | select(.username == \"$mod\") | .authors[]" "$YAML_FILE")
+    for author in $authors; do
+        sudo setfacl -m m::rwx "/home/authors/$author/public"
+        sudo setfacl -m m::rwx "/home/authors/$author/blogs"
+    done
 done
 sudo setfacl -R -m g:g_admin:rwx /home/authors/*
 sudo setfacl -d -m g:g_admin:rwx /home/authors/*
@@ -209,68 +200,3 @@ sudo setfacl -d -m g:g_admin:rwx /home/users/*
 sudo setfacl -R -m g:g_admin:rwx /home/mods/*
 sudo setfacl -d -m g:g_admin:rwx /home/mods/*
 sudo setfacl -m g:g_user:x /home/authors/*
-touch "/var/log/blog_activity.log"
-echo "log file created"
-sudo chown root:g_admin "/var/log/blog_activity.log"
-sudo setfacl -m g:g_author:-w- "/var/log/blog_activity.log"
-sudo setfacl -m group::rwx /var/log/blog_activity.log
-
-echo "Pruning stale users (keeping home dirs)..."
-for old_user in $PREV_USERS; do
-    if ! echo "$USERS" | grep -qw "$old_user"; then
-        echo "Disabling $old_user..."
-        sudo userdel "$old_user" 2>/dev/null || true
-    fi
-done
-
-for old_author in $PREV_AUTHORS; do
-    if ! echo "$AUTHORS" | grep -qw "$old_author"; then
-        echo "Disabling $old_author..."
-        sudo userdel "$old_author" 2>/dev/null || true
-    fi
-done
-
-for old_mod in $PREV_MODS; do
-    if ! echo "$MODS" | grep -qw "$old_mod"; then
-        echo "Disabling $old_mod..."
-        sudo userdel "$old_mod" 2>/dev/null || true
-    fi
-done
-
-
-
-echo "Fixing ownerships of all home directories..."
-
-# Fix admins
-for admin in $ADMINS; do
-    sudo chown -R "$admin:g_admin" "/home/admin/$admin"
-    echo "Ownership fixed for admin: $admin"
-done
-
-# Fix authors
-for author in $AUTHORS; do
-    sudo chown -R "$author:g_author" "/home/authors/$author"
-    echo "Ownership fixed for author: $author"
-done
-
-# Fix moderators
-for mod in $MODS; do
-    sudo chown -R "$mod:g_mod" "/home/mods/$mod"
-    echo "Ownership fixed for moderator: $mod"
-done
-
-# Fix users
-for user in $USERS; do
-    sudo chown -R "$user:g_user" "/home/users/$user"
-    echo "Ownership fixed for user: $user"
-done
-
-
-sudo chown root:g_admin /home/admin
-sudo chmod 770 /home/admin
-sudo chown root:g_user /home/users
-sudo chmod 755 /home/users
-sudo chown root:g_author /home/authors
-sudo chmod 755 /home/authors
-sudo chown root:g_mod /home/mods
-sudo chmod 755 /home/mods

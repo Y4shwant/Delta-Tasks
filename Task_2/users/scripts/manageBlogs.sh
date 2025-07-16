@@ -32,7 +32,7 @@ publish_article() {
 
     mkdir -p "$PUBLIC_DIR"
     ln -sf "$BLOGS_DIR/$FILENAME" "$PUBLIC_DIR/$FILENAME"
-    chmod o+r "$BLOGS_DIR/$FILENAME"
+    chmod o-r "$BLOGS_DIR/$FILENAME"
     
     yq -i '.blogs += [{
       "file_name": "'"$FILENAME"'",

@@ -1,14 +1,11 @@
 FROM python:3.11-slim
 
-# Set working directory
-WORKDIR /app
+WORKDIR /chat_app
 
-# Copy server code and database
-COPY ../server/ ./server/
-COPY ../db/ ./db/
-COPY ../deploy/entrypoint.sh /entrypoint.sh
+COPY server/ ./server/
+COPY db/ ./db/
+COPY deploy/entrypoint.sh /entrypoint.sh
 
-# Set permissions securely
 RUN chmod +x /entrypoint.sh && \
     chmod 755 ./server/server.py && \
     chmod 700 ./server/auth.py ./server/leaderboard.py ./server/rooms.py ./server/logger.py && \
@@ -16,5 +13,4 @@ RUN chmod +x /entrypoint.sh && \
     chmod 600 ./db/users.db || true && \
     chmod 644 ./db/chat_logs/* || true
 
-# Set entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

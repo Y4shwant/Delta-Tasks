@@ -2,7 +2,7 @@
 set -e
 
 if [ $# -ne 2 ]; then
-    echo "Usage: sudo read_blog <author_name> <blog_name>"
+    echo "Usage: sudo read_blog.sh <author_name> <blog_name>"
     exit 1
 fi
 
