@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   blogserver:
     build:
@@ -9,6 +7,13 @@ services:
     ports:
       - "5000:5000" # Flask API
     restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      MYSQL_HOST: db
+      MYSQL_USER: root
+      MYSQL_PASSWORD: rootpass
+      MYSQL_DATABASE: blogdb
     volumes:
       - home_data:/home
       - etc_data:/etc
@@ -23,6 +28,20 @@ services:
     depends_on:
       - blogserver
 
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: blogdb
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+
 volumes:
   home_data:
   etc_data:
+  db_data:

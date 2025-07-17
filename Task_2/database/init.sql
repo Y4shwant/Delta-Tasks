@@ -1,17 +1,19 @@
 CREATE DATABASE IF NOT EXISTS blogdb;
-
 USE blogdb;
 
+-- USERS TABLE
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    username VARCHAR(255) PRIMARY KEY,
+    fyp1 VARCHAR(255),
+    fyp2 VARCHAR(255),
+    fyp3 VARCHAR(255)
 );
 
+-- BLOGS TABLE
 CREATE TABLE IF NOT EXISTS blogs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(100),
-    author VARCHAR(50),
-    category INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    blog_name VARCHAR(255),
+    author VARCHAR(255),
+    publish_status BOOLEAN,
+    category_order VARCHAR(255),
+    read_count INT DEFAULT 0
 );

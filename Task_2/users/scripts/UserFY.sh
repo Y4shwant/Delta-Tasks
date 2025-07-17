@@ -78,7 +78,7 @@ for round in {1..3}; do
 
         for file in $sorted_blogs; do
             if (( blog_assign_count["$file"] < max_assign )); then
-                echo "  - blog: $file by ${blog_authors[$file]}" >> "$out_path"
+                echo "  - fyp$round: $file by ${blog_authors[$file]}" >> "$out_path"
                 (( blog_assign_count["$file"]++ ))
 
                 # Remove assigned blog from user’s sorted list
