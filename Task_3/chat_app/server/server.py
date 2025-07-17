@@ -15,7 +15,7 @@ logger = ChatLogger()
 
 def handle_client(conn, addr):
     print(f"[+] Connection from {addr}")
-    
+
     try:
         creds = conn.recv(1024).decode().strip()
         if not creds:
@@ -39,7 +39,7 @@ def handle_client(conn, addr):
 
         if not success:
             conn.send(b"AUTH_FAIL")
-            
+            conn.close()
             return
 
         conn.send(b"AUTH_SUCCESS")
@@ -67,6 +67,8 @@ def handle_client(conn, addr):
                 if result:
                     current_room = room_name
                     conn.send(f"[+] Joined room '{room_name}'.".encode())
+                    # Notify others
+                    rooms.broadcast(current_room, f"[*] {username} has joined the room.")
                 else:
                     conn.send(f"[!] Room '{room_name}' not found.".encode())
 
@@ -99,7 +101,9 @@ def handle_client(conn, addr):
         except:
             break
 
-    rooms.leave_room(current_room, username)
+    if current_room:
+        rooms.leave_room(current_room, username)
+        rooms.broadcast(current_room, f"[*] {username} has left the room.")
     leaderboard.disconnect(username)
     conn.close()
     print(f"[-] {username} disconnected.")

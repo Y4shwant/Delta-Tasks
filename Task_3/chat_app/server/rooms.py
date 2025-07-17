@@ -4,7 +4,7 @@ import os
 
 class RoomManager:
     def __init__(self):
-        base_dir = os.path.dirname(os.path.dirname(__file__))  # /home/yashwantb/Delta/Task_3/chat_app
+        base_dir = os.path.dirname(os.path.dirname(__file__))
         self.db_dir = os.path.join(base_dir, "db")
         self.rooms_file = os.path.join(self.db_dir, "rooms.yaml")
         self.load_rooms()
@@ -20,8 +20,9 @@ class RoomManager:
         with open(self.rooms_file, "r") as f:
             self.rooms = yaml.safe_load(f) or {}
 
+        # Add live user connections dictionary
         for room in self.rooms.values():
-            room["users"] = set()
+            room["users"] = {}
 
     def save_rooms(self):
         persistent = {
@@ -47,7 +48,7 @@ class RoomManager:
             "visibility": visibility,
             "owner": owner,
             "join_code": join_code,
-            "users": set([owner])
+            "users": {owner: conn}
         }
         self.save_rooms()
 
@@ -68,31 +69,36 @@ class RoomManager:
         if room["visibility"] == "private":
             if not code:
                 conn.send(b"[!] This is a private room. Enter join code:")
-                # Wait for code from client
                 code = conn.recv(1024).decode().strip()
             if code != room["join_code"]:
                 conn.send(f"[!] Invalid join code for '{room_name}'.".encode())
                 return False
 
-        room["users"].add(username)
-        conn.send(f"[+] Joined room '{room_name}'.".encode())
+        room["users"][username] = conn
         return True
+
     def leave_room(self, room_name, username):
         if room_name in self.rooms:
-            self.rooms[room_name]["users"].discard(username)
+            users = self.rooms[room_name]["users"]
+            if username in users:
+                del users[username]
 
     def broadcast(self, room_name, message):
         if room_name in self.rooms:
-            for user in self.rooms[room_name]["users"]:
+            dead_users = []
+            for username, user_conn in self.rooms[room_name]["users"].items():
                 try:
-                    user.send(message.encode())
+                    user_conn.send(message.encode())
                 except:
-                    pass
+                    dead_users.append(username)
+            # Clean up dead sockets
+            for username in dead_users:
+                del self.rooms[room_name]["users"][username]
 
     def get_users(self, room_name):
         if room_name in self.rooms:
-            users = self.rooms[room_name]["users"]
-            return "[+] Users in room: " + ", ".join(users)
+            usernames = self.rooms[room_name]["users"].keys()
+            return "[+] Users in room: " + ", ".join(usernames)
         return "[!] Room not found."
 
     def get_stats(self, room_name):
