@@ -1,9 +1,0 @@
-version: "3.8"
-
-services:
-  chat_server:
-    build: .
-    ports:
-      - "9000:9000"
-    volumes:
-      - ./db:/app/db

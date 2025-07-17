@@ -44,7 +44,6 @@ publish_article() {
     echo "'$FILENAME' published and reflected in blogs.yaml"
     echo "$USERNAME published $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 
-    # ✅ SQL Insert/Update
     $MYSQL_CMD "INSERT INTO blogs (blog_name, author, publish_status, category_order, read_count)
                 VALUES ('$FILENAME', '$USERNAME', TRUE, '[$category_order]', 0)
                 ON DUPLICATE KEY UPDATE
@@ -77,7 +76,6 @@ archive_article() {
     echo "'$FILENAME' archived successfully."
     echo "$USERNAME archived $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 
-    # ✅ SQL Update
     $MYSQL_CMD "UPDATE blogs
                 SET publish_status=FALSE
                 WHERE blog_name='$FILENAME' AND author='$USERNAME';"
@@ -108,7 +106,6 @@ delete_article() {
     echo "Removed blog metadata from YAML."
     echo "$USERNAME deleted $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 
-    # ✅ SQL Delete
     $MYSQL_CMD "DELETE FROM blogs
                 WHERE blog_name='$FILENAME' AND author='$USERNAME';"
 }
@@ -145,7 +142,7 @@ edit_article() {
 
     echo "Updated category order for $FILENAME."
 
-    # ✅ SQL Update
+
     $MYSQL_CMD "UPDATE blogs
                 SET category_order='[${new_order}]'
                 WHERE blog_name='$FILENAME' AND author='$USERNAME';"

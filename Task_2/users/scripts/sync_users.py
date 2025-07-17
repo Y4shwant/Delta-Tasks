@@ -47,17 +47,17 @@ def sync_users():
                         "REPLACE INTO users (username, fyp1, fyp2, fyp3) VALUES (%s, %s, %s, %s)",
                         (user, fyp1, fyp2, fyp3)
                     )
-                    print(f"✅ Synced: {user}")
+                    print(f"Synced: {user}")
 
         conn.commit()
         cursor.close()
         conn.close()
-        print("🎉 All users synced successfully.")
+        print("All users synced successfully.")
 
     except mysql.connector.Error as err:
-        print(f"❌ Database error: {err}")
+        print(f"Database error: {err}")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     sync_users()

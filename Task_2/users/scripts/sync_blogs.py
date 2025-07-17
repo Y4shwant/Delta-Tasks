@@ -43,17 +43,17 @@ def sync_blogs():
                             """,
                             (blog_name, author, publish_status, cat_order, read_count)
                         )
-                        print(f"✅ Synced blog: {blog_name} by {author}")
+                        print(f"Synced blog: {blog_name} by {author}")
 
         conn.commit()
         cursor.close()
         conn.close()
-        print("🎉 All blogs synced successfully.")
+        print("All blogs synced successfully.")
 
     except mysql.connector.Error as err:
-        print(f"❌ Database error: {err}")
+        print(f"Database error: {err}")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     sync_blogs()
