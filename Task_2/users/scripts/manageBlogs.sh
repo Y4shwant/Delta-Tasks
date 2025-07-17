@@ -8,6 +8,8 @@ PUBLIC_DIR="$HOME_DIR/public"
 YAML_FILE="$HOME_DIR/blogs.yaml"
 FILENAME="$2"
 
+MYSQL_CMD="mysql -uroot -prootpass -hmysql -D blogdb -se"
+
 publish_article() {
     if [ ! -f "$BLOGS_DIR/$FILENAME" ]; then
         echo "Error: '$FILENAME' not found in $BLOGS_DIR"
@@ -42,6 +44,12 @@ publish_article() {
     echo "'$FILENAME' published and reflected in blogs.yaml"
     echo "$USERNAME published $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
 
+    # ✅ SQL Insert/Update
+    $MYSQL_CMD "INSERT INTO blogs (blog_name, author, publish_status, category_order, read_count)
+                VALUES ('$FILENAME', '$USERNAME', TRUE, '[$category_order]', 0)
+                ON DUPLICATE KEY UPDATE
+                    publish_status=TRUE,
+                    category_order='[$category_order]';"
 }
 
 archive_article() {
@@ -58,24 +66,22 @@ archive_article() {
         echo "No symlink found in public directory for '$FILENAME'."
     fi
 
-    # Revoke read permission for others on original blog file
     chmod o-r "$BLOGS_DIR/$FILENAME"
     echo "Revoked read permissions for others."
 
-    # Use yq to update publish_status to false for this blog entry
     yq eval ".blogs[] |= (
       select(.file_name == \"$FILENAME\") 
       | .publish_status = false
     )" -i "$YAML_FILE"
-  
 
     echo "'$FILENAME' archived successfully."
     echo "$USERNAME archived $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
+
+    # ✅ SQL Update
+    $MYSQL_CMD "UPDATE blogs
+                SET publish_status=FALSE
+                WHERE blog_name='$FILENAME' AND author='$USERNAME';"
 }
-
-
-
-
 
 delete_article() {
     # Remove symlink if it exists
@@ -101,6 +107,10 @@ delete_article() {
 
     echo "Removed blog metadata from YAML."
     echo "$USERNAME deleted $FILENAME on $(date '+%F %T')" >> "/var/log/blog_activity.log"
+
+    # ✅ SQL Delete
+    $MYSQL_CMD "DELETE FROM blogs
+                WHERE blog_name='$FILENAME' AND author='$USERNAME';"
 }
 
 edit_article() {
@@ -126,19 +136,19 @@ edit_article() {
         return
     fi
 
-
-    # Convert to proper YAML array syntax
     formatted_array=$(echo "$new_order" | awk -F',' '{ for(i=1;i<=NF;i++) printf "%s%s", $i, (i<NF ? ", " : "") }')
 
-    # Run yq with correct array formatting
     yq eval ".blogs[] |= (
       select(.file_name == \"$FILENAME\") 
       | .cat_order = [${formatted_array}]
     )" -i "$YAML_FILE"
 
-
-  
     echo "Updated category order for $FILENAME."
+
+    # ✅ SQL Update
+    $MYSQL_CMD "UPDATE blogs
+                SET category_order='[${new_order}]'
+                WHERE blog_name='$FILENAME' AND author='$USERNAME';"
 }
 
 if [ "$1" == "-p" ]; then

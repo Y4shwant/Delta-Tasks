@@ -6,3 +6,7 @@ help:
   join_code: null
   owner: Yashwant
   visibility: public
+room:
+  join_code: null
+  owner: manav
+  visibility: public
