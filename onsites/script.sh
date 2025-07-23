@@ -4,9 +4,7 @@ mkdir -p "$report_dir"
 report_file="$report_dir/report-$(date +%Y-%m-%d).txt"
 
 declare -A mod_date
-declare -A type_count
 declare -A file_size
-declare -A count
 
 paths=($(find /home/yashwantb/onsites/httpd ))
 echo "Generating report ...." 
@@ -56,6 +54,6 @@ echo "Open files (777): $open_count" | tee -a $report_file
 echo "Restricted files (700): $restricted_count" | tee -a $report_file
 rm -f files.txt temp1.txt temp2.txt
 find "$report_dir" -mtime +7 -print0 | xargs -0 rm -f
-# write cronjob using crontab -e 0 0 * * * script.sh
+#crontab -e 0 0 * * * script.sh
 
 
