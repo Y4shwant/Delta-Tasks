@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Department Router</title>
+  <script>
+    async function sendRequest() {
+      const rollno = document.getElementById("rollno").value.trim();
+      const dept = document.getElementById("dept").value.trim().toUpperCase();
+
+      if (!rollno || !dept) {
+        alert("Please fill both fields");
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:20000/${dept}?rollno=${rollno}`);
+        const data = await response.json();
+        document.getElementById("result").innerText = JSON.stringify(data);
+      } catch (error) {
+        document.getElementById("result").innerText = "Error contacting server";
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Department Handler</h1>
+  <label>Roll No:</label>
+  <input type="text" id="rollno" /><br /><br />
+
+  <label>Department (CSE/EEE/MECH):</label>
+  <input type="text" id="dept" /><br /><br />
+
+  <button onclick="sendRequest()">Submit</button>
+  <pre id="result"></pre>
+</body>
+</html>

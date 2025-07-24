@@ -1,16 +1,16 @@
 services:
-  CSE:
+  cse:
     build: 
       context: .
-      dockerfile: CSE_dockerfile
-  EEE:
+      dockerfile: cse_dockerfile
+  eee:
     build:
       context: .
-      dockerfile: EEE_dockerfile
-  MECH:
+      dockerfile: eee_dockerfile
+  mech:
     build:
       context: .
-      dockerfile: MECH_dockerfile
+      dockerfile: mech_dockerfile
   apache:
     build:
       context: .
@@ -23,4 +23,4 @@ services:
       dockerfile: app_dockerfile
     ports:
       - "20001:80"
-  a
+  
