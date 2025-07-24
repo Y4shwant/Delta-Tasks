@@ -1,0 +1,7 @@
+FROM ubuntu/apache2:latest
+RUN sudo a2enmod proxy
+RUN sudo a2enmod proxy_http
+RUN sudo a2enmod proxy_balancer
+RUN sudo a2enmod lbmethod_byrequests
+COPY apache.conf /etc/apache2/conf.d/default.conf
+RUN sudo service apache2 restart
